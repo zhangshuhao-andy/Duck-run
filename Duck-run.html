@@ -1,308 +1,502 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh">
 <head>
-<meta charset="UTF-8">
-<title>CyberDuck FULL</title>
-<style>
-body { margin:0; background:#0a0a19; overflow:hidden; }
-canvas { display:block; margin:auto; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CyberDuck Extreme - Optimized</title>
+    <style>
+        :root {
+            --primary: #00ffff; --bg: #050510; --accent: #ff3296; --gold: #ffd432;
+        }
+        body {
+            margin: 0; background: var(--bg); color: #fff;
+            font-family: 'Segoe UI', Impact, sans-serif;
+            height: 100vh; display: flex; align-items: center; justify-content: center;
+            overflow: hidden; touch-action: none; /* 禁用系统手势 */
+            -webkit-user-select: none; user-select: none; /* 禁用文本选中 */
+        }
+        #game-wrapper {
+            position: relative; 
+            box-shadow: 0 0 50px rgba(0, 255, 255, 0.2); overflow: hidden;
+            background: #000;
+        }
+        canvas { display: block; image-rendering: -webkit-optimize-contrast; /* 移动端抗锯齿优化 */ }
+
+        /* --- UI层 --- */
+        .ui-overlay {
+            position: absolute; inset: 0; pointer-events: none; z-index: 100;
+            display: flex; flex-direction: column; padding: 20px;
+        }
+        
+        /* HUD */
+        .hud { display: flex; justify-content: space-between; margin-bottom: auto; }
+        .stat-box {
+            background: rgba(0,0,0,0.7); padding: 8px 18px; border-radius: 12px;
+            border: 1px solid var(--primary); backdrop-filter: blur(5px);
+            font-weight: bold; font-size: 16px; letter-spacing: 1px;
+        }
+        .stat-box span { color: var(--primary); text-shadow: 0 0 5px var(--primary); }
+
+        /* 菜单/结算遮罩 */
+        .screen-mask {
+            position: absolute; inset: 0; background: rgba(5, 5, 20, 0.9);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 500; backdrop-filter: blur(15px); pointer-events: auto;
+            transition: opacity 0.3s;
+        }
+        h1 { 
+            font-size: 70px; margin: 0; font-style: italic; font-family: Impact;
+            background: linear-gradient(to bottom, #fff, var(--primary)); 
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 20px var(--primary));
+        }
+        .btn-main {
+            width: 260px; padding: 18px; margin: 10px; border: 1px solid var(--primary);
+            border-radius: 15px; background: rgba(20,20,50,0.8); color: white;
+            font-size: 22px; font-weight: bold; cursor: pointer; transition: all 0.2s;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .btn-main:hover { 
+            background: var(--primary); color: #000; 
+            transform: scale(1.05); box-shadow: 0 0 25px var(--primary); 
+        }
+
+        /* 商店弹窗 */
+        .modal {
+            display: none; position: absolute; inset: 40px; background: #0a0a1a;
+            border: 2px solid var(--primary); border-radius: 20px; z-index: 600;
+            padding: 30px; flex-direction: column; pointer-events: auto;
+        }
+        .item-card {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px; border-bottom: 1px solid #1a1a3a;
+        }
+    </style>
 </head>
 <body>
-<canvas id="game"></canvas>
+
+<div id="game-wrapper">
+    <!-- UI 层 -->
+    <div class="ui-overlay">
+        <div class="hud">
+            <div class="stat-box">MODE: <span id="ui-mode">STORY</span></div>
+            <div class="stat-box">💰 <span id="ui-coins">0</span></div>
+            <div class="stat-box">DIST: <span id="ui-dist">0</span>m</div>
+        </div>
+    </div>
+
+    <!-- 主菜单 -->
+    <div id="menu-overlay" class="screen-mask">
+        <h1>CYBER DUCK</h1>
+        <div style="color:var(--accent); letter-spacing:6px; margin: -10px 0 30px 0; font-weight:bold;">ZHANG SHUHAO EDITION</div>
+        <button class="btn-main" onclick="startGame('level')">START MISSION</button>
+        <button class="btn-main" onclick="startGame('endless')">ENDLESS RUN</button>
+        <button class="btn-main" onclick="toggleModal('shop', true)">NEON SHOP</button>
+    </div>
+
+    <!-- 商店 -->
+    <div id="shop-modal" class="modal">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2 style="color:var(--primary); margin:0; font-size:30px;">NEON SHOP</h2>
+            <div class="stat-box" style="color:var(--gold)">CREDITS: <span id="shop-coins">0</span></div>
+        </div>
+        <div style="flex:1; overflow-y:auto; padding-right:10px;">
+            <div class="item-card">
+                <span style="font-weight:bold;">CYAN Trail (Default)</span>
+                <button class="btn-main" style="width:100px; padding:10px; font-size:16px;" onclick="setSkin('#00ffff',0)">EQUIP</button>
+            </div>
+            <div class="item-card">
+                <span style="font-weight:bold; color:var(--accent)">PINK Spark (100💰)</span>
+                <button class="btn-main" style="width:100px; padding:10px; font-size:16px;" onclick="setSkin('#ff3296',100)">BUY</button>
+            </div>
+            <div class="item-card">
+                <span style="font-weight:bold; color:var(--gold)">GOLD Plating (500💰)</span>
+                <button class="btn-main" style="width:100px; padding:10px; font-size:16px;" onclick="setSkin('#ffd432',500)">BUY</button>
+            </div>
+        </div>
+        <button class="btn-main" style="margin:20px auto 0; width:100%;" onclick="toggleModal('shop', false)">BACK</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+</div>
 
 <script>
-const c = document.getElementById("game");
-const ctx = c.getContext("2d");
-c.width = 1000; c.height = 600;
+    const wrapper = document.getElementById('game-wrapper');
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d', { alpha: false }); // 优化：禁用Alpha通道提高底图渲染
 
-const GROUND = 520;
-
-// ================= 状态 =================
-let page = "menu";
-let state = "play";
-
-let speed = 10;
-let distance = 0;
-
-// ================= 玩家 =================
-let player = {
-    x:150,y:GROUND-50,
-    vy:0,
-    jumpCount:0,
-    angle:0,
-    squash:1,
-    crouch:false,
-    ghosts:[]
-};
-
-// ================= 数据 =================
-let hazards = [];
-let platforms = [];
-
-// ================= 控制 =================
-c.addEventListener("mousedown", ()=>jump());
-c.addEventListener("touchstart", ()=>jump());
-
-document.addEventListener("keydown",e=>{
-    if(e.code==="Space") jump();
-    if(e.code==="KeyC") player.crouch=true;
-});
-document.addEventListener("keyup",e=>{
-    if(e.code==="KeyC") player.crouch=false;
-});
-
-function jump(){
-    if(page==="menu"){
-        startGame();
-        return;
+    // 适配屏幕
+    const W = 1000, H = 600;
+    canvas.width = W; canvas.height = H;
+    
+    // 自适应缩放 (针对iPad等移动端)
+    function resize() {
+        const scale = Math.min(window.innerWidth / W, window.innerHeight / H);
+        wrapper.style.transform = `scale(${scale})`;
+        wrapper.style.width = W + 'px';
+        wrapper.style.height = H + 'px';
     }
-    if(player.jumpCount<2 && !player.crouch){
-        player.vy=-17;
-        player.jumpCount++;
-        player.squash=1.4;
-    }
-}
+    window.addEventListener('resize', resize);
+    resize();
 
-// ================= 工具 =================
-function rand(a,b){return Math.random()*(b-a)+a;}
-function hit(a,b){
-    return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y;
-}
+    const GROUND_Y = 520;
 
-// ================= 地图生成 =================
-function initMap(){
-    hazards=[]; platforms=[];
-    let x=1200;
-
-    while(x<4000){
-        let r=Math.random();
-
-        if(r<0.4){
-            hazards.push({x,y:GROUND-45,w:42,h:45,type:"mine"});
-            x+=rand(320,480);
-        }else if(r<0.7){
-            hazards.push({x,y:GROUND-120,w:240,h:35,type:"laser"});
-            x+=500;
-        }else{
-            x+=rand(300,450);
-        }
-
-        if(Math.random()>0.3){
-            platforms.push({x:x-120,y:GROUND-160,w:220,h:20});
+    // --- 性能优化：预渲染静态背景 ---
+    const bgCanvas = document.createElement('canvas');
+    bgCanvas.width = W; bgCanvas.height = H;
+    const bgCtx = bgCanvas.getContext('2d');
+    
+    function preRenderBackground() {
+        // 深蓝背景
+        bgCtx.fillStyle = '#050510';
+        bgCtx.fillRect(0, 0, W, H);
+        // 地面实体
+        bgCtx.fillStyle = '#141432';
+        bgCtx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+        // 地平线霓虹
+        bgCtx.strokeStyle = '#00ffff';
+        bgCtx.lineWidth = 3;
+        bgCtx.beginPath(); bgCtx.moveTo(0, GROUND_Y); bgCtx.lineTo(W, GROUND_Y); bgCtx.stroke();
+        // 静态网格线装饰 (简化版以提高性能)
+        bgCtx.strokeStyle = 'rgba(0, 255, 255, 0.05)';
+        bgCtx.lineWidth = 1;
+        for(let i=0; i<W; i+=50) {
+            bgCtx.beginPath(); bgCtx.moveTo(i, GROUND_Y); bgCtx.lineTo(i-100, H); bgCtx.stroke();
         }
     }
-}
+    preRenderBackground();
 
-// ================= 游戏开始 =================
-function startGame(){
-    page="game";
-    state="play";
-    speed=10;
-    distance=0;
+    // --- 游戏数据 ---
+    let coins = parseInt(localStorage.getItem('cd_coins_ex')) || 0;
+    let ownedSkins = JSON.parse(localStorage.getItem('cd_owned_ex')) || ['#00ffff'];
+    let currentColor = localStorage.getItem('cd_color_ex') || '#00ffff';
 
-    player.y=GROUND-50;
-    player.vy=0;
-    player.jumpCount=0;
-    player.angle=0;
-    player.ghosts=[];
+    let gameActive = false;
+    let gameState = "play"; // play, dead, win
+    let gameMode = 'level'; 
+    let score = 0;
+    let speed = 10;
+    let levelDist = 5000;
+    
+    // 物理参数
+    const GRAVITY = 0.85;
+    const JUMP_FORCE = -17;
 
-    initMap();
-}
+    let player = {
+        x: 150, y: GROUND_Y - 50, vy: 0,
+        jumpCount: 0, angle: 0, squash: 1,
+        crouch: false, ghosts: []
+    };
 
-// ================= 玩家更新 =================
-function updatePlayer(){
-    let target = player.crouch ? 0.35 : 1;
-    player.squash += (target-player.squash)*0.25;
+    let hazards = [];
+    let platforms = [];
 
-    if(!player.crouch){
-        player.vy += 0.85;
-        player.y += player.vy;
-
-        if(player.jumpCount>0) player.angle-=12;
-        else player.angle*=0.8;
-
-    }else{
-        player.vy=0;
-        player.angle*=0.5;
-
-        if(player.y+50<GROUND) player.y+=12;
+    // --- 系统功能 ---
+    function syncData() {
+        document.getElementById('ui-coins').innerText = coins;
+        document.getElementById('shop-coins').innerText = coins;
+        document.getElementById('ui-dist').innerText = Math.floor(score / 10);
+        document.getElementById('ui-mode').innerText = gameMode.toUpperCase();
+        localStorage.setItem('cd_coins_ex', coins);
+        localStorage.setItem('cd_owned_ex', JSON.stringify(ownedSkins));
+        localStorage.setItem('cd_color_ex', currentColor);
     }
 
-    // 拖尾
-    player.ghosts.push({
-        x:player.x,y:player.y,
-        angle:player.angle,
-        squash:player.squash,
-        crouch:player.crouch
+    function toggleModal(id, show) {
+        document.getElementById(id + '-modal').style.display = show ? 'flex' : 'none';
+        syncData();
+    }
+
+    function setSkin(col, price) {
+        if(ownedSkins.includes(col)) {
+            currentColor = col;
+        } else if(coins >= price) {
+            coins -= price; ownedSkins.push(col); currentColor = col;
+        } else {
+            alert("CREDITS INSUFFICIENT");
+        }
+        syncData();
+    }
+
+    // --- 核心工具 ---
+    const rand = (a, b) => Math.random() * (b - a) + a;
+    const hitTest = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+
+    // --- 地图生成 (初始版) ---
+    function initMap() {
+        hazards = []; platforms = [];
+        let x = 1200;
+        // 预生成一段地图片段
+        for(let i=0; i<10; i++) {
+            x = generateChunk(x);
+        }
+        levelDist = x; // 关卡模式的终点
+    }
+
+    function generateChunk(startX) {
+        let x = startX;
+        let r = Math.random();
+        // 优化生成概率，确保iPad上不会瞬间聚集太多物体
+        if (r < 0.4) {
+            hazards.push({ x, y: GROUND_Y - 45, w: 42, h: 45, type: "mine", col: varColor('--gold') });
+            x += rand(350, 550);
+        } else if (r < 0.7) {
+            hazards.push({ x, y: GROUND_Y - 120, w: 240, h: 35, type: "laser", col: varColor('--accent') });
+            x += 600;
+        } else {
+            x += rand(300, 450);
+        }
+        if (Math.random() > 0.4) {
+            platforms.push({ x: x - 150, y: GROUND_Y - 160, w: 220, h: 20 });
+        }
+        return x;
+    }
+
+    // --- 游戏动作 ---
+    function startGame(mode) {
+        gameMode = mode;
+        gameActive = true;
+        gameState = "play";
+        speed = 10;
+        score = 0;
+        player.y = GROUND_Y - 50; player.vy = 0; player.jumpCount = 0;
+        player.angle = 0; player.crouch = false; player.ghosts = [];
+        
+        initMap();
+        document.getElementById('menu-overlay').style.display = 'none';
+        syncData();
+    }
+
+    function gameOver(win) {
+        gameActive = false;
+        gameState = win ? "win" : "dead";
+        if(win) coins += (gameMode === 'level' ? 50 : Math.floor(score/100));
+        
+        document.getElementById('menu-overlay').style.display = 'flex';
+        document.querySelector('h1').innerText = win ? "MISSION COMPLETE" : "SYSTEM CRASHED";
+        document.querySelector('h1').style.filter = win ? "drop-shadow(0 0 20px #0f0)" : "drop-shadow(0 0 20px #f00)";
+        syncData();
+    }
+
+    function doJump() {
+        if (!gameActive) return;
+        if (player.jumpCount < 2 && !player.crouch) {
+            player.vy = JUMP_FORCE;
+            player.jumpCount++;
+            player.squash = 1.4;
+        }
+    }
+
+    // --- 输入响应 (合并按键和触控) ---
+    canvas.addEventListener('pointerdown', e => { e.preventDefault(); doJump(); });
+    document.addEventListener('keydown', e => {
+        if (e.code === "Space") { e.preventDefault(); doJump(); }
+        if (e.code === "KeyC") player.crouch = true;
     });
-    if(player.ghosts.length>6) player.ghosts.shift();
+    document.addEventListener('keyup', e => {
+        if (e.code === "KeyC") player.crouch = false;
+    });
 
-    // 地面
-    if(player.y+50>=GROUND){
-        player.y=GROUND-50;
-        player.vy=0;
-        player.jumpCount=0;
+    // --- 核心逻辑更新 ---
+    function update() {
+        if (!gameActive || gameState !== "play") return;
+
+        // 1. 玩家物理
+        let targetSquash = player.crouch ? 0.35 : 1;
+        player.squash += (targetSquash - player.squash) * 0.25;
+
+        if (!player.crouch) {
+            player.vy += GRAVITY;
+            player.y += player.vy;
+            // 物理旋转动画
+            if (player.jumpCount > 0) player.angle -= (speed * 1.2);
+            else player.angle *= 0.8;
+        } else {
+            player.vy = 0;
+            player.angle *= 0.5;
+            // 下蹲快速下落
+            if (player.y + 50 < GROUND_Y) player.y += speed * 1.2;
+        }
+
+        // 性能优化：限制拖尾数据量
+        if(score % 2 === 0) { // 每两帧记录一次拖尾
+            player.ghosts.push({ x: player.x, y: player.y, angle: player.angle, squash: player.squash, crouch: player.crouch });
+            if (player.ghosts.length > 5) player.ghosts.shift();
+        }
+
+        // 地面碰撞
+        if (player.y + 50 >= GROUND_Y) {
+            player.y = GROUND_Y - 50;
+            player.vy = 0;
+            player.jumpCount = 0;
+        }
+
+        // 平台碰撞 (仅在下降时)
+        if (!player.crouch && player.vy >= 0) {
+            let footHitbox = { x: player.x + 5, y: player.y + 40, w: 35, h: 10 };
+            for(let p of platforms) {
+                if (hitTest(footHitbox, p) && player.y + 40 < p.y + p.h) {
+                    player.y = p.y - 50;
+                    player.vy = 0;
+                    player.jumpCount = 0;
+                    break; 
+                }
+            }
+        }
+
+        // 2. 世界移动
+        let currentSpeed = speed;
+        // 终点安全区逻辑
+        if(gameMode === 'level') {
+            levelDist -= speed;
+            if(levelDist < 800) currentSpeed = speed * 0.7; // 接近终点减速
+            if(levelDist <= player.x) gameOver(true);
+        } else {
+            // Endless 模式加速
+            speed += 0.001; 
+        }
+        
+        score += currentSpeed;
+        hazards.forEach(h => h.x -= currentSpeed);
+        platforms.forEach(p => p.x -= currentSpeed);
+
+        // 3. 碰撞检测
+        let pW = 25, pH = player.crouch ? 20 : 45;
+        let pY = player.y + (player.crouch ? 30 : 5);
+        let playerHitbox = { x: player.x + 10, y: pY, w: pW, h: pH };
+
+        // 性能优化：仅检测屏幕附近的障碍物
+        for(let i=0; i<hazards.length; i++) {
+            let h = hazards[i];
+            if(h.x > W) continue; // 还在屏幕右侧很远
+            if(h.x < -h.w) { // 移出屏幕
+                hazards.splice(i, 1); i--;
+                if(gameMode === 'endless') coins += 1;
+                continue;
+            }
+
+            if (hitTest(playerHitbox, h)) {
+                // 激光可以通过下蹲躲避
+                if (!(h.type === "laser" && player.crouch)) {
+                    gameOver(false);
+                    return; // 停止后续更新
+                }
+            }
+        }
+
+        // 清理移除的平台
+        for(let i=0; i<platforms.length; i++){
+            if(platforms[i].x < -platforms[i].w) { platforms.splice(i, 1); i--; }
+        }
+
+        // 4. 无限生成 (Endless 或关卡模式未到终点)
+        if( (gameMode === 'endless' || levelDist > W) && hazards.length < 5) {
+            let lastX = hazards.length > 0 ? hazards[hazards.length - 1].x : W;
+            if(lastX < W + 200) {
+                generateChunk(W + rand(100, 300));
+            }
+        }
     }
 
-    // 平台
-    if(!player.crouch && player.vy>=0){
-        let foot = {x:player.x,y:player.y+40,w:45,h:10};
+    // --- 霓虹发光鸭子绘制核心 ---
+    // 性能关键：在iPad上，ShadowBlur非常耗电，我们仅将其用于主体，拖尾不使用。
+    function drawDuck(x, y, angle, squash, alpha, crouch, useGlow) {
+        let h = 50 * squash;
+        let w = 45 * (crouch ? 1.8 : 2.0 - squash);
 
-        platforms.forEach(p=>{
-            if(hit(foot,p) && player.y+40 < p.y+p.h/2){
-                player.y = p.y-50;
-                player.vy=0;
-                player.jumpCount=0;
-            }
+        ctx.save();
+        ctx.translate(x + 22, y + 25);
+        ctx.rotate(angle * Math.PI / 180);
+        ctx.globalAlpha = alpha;
+
+        if (useGlow) {
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = player.color;
+        }
+
+        // 椭圆身体 (核心审美)
+        ctx.beginPath();
+        ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2);
+        ctx.fillStyle = player.color;
+        ctx.fill();
+        
+        ctx.shadowBlur = 0; // 绘制完身体后立即关闭Glow，优化后续绘制
+
+        // 赛博眼睛 (青色)
+        ctx.fillStyle = "#00ffff";
+        ctx.fillRect(w / 4, -h / 6, 16, crouch ? 4 : 8);
+
+        ctx.restore();
+    }
+
+    // --- 综合绘制 ---
+    function draw() {
+        // 1. 性能优化：直接绘制预渲染的背景底图
+        ctx.drawImage(bgCanvas, 0, 0);
+
+        // 绘制关卡模式终点红线
+        if(gameActive && gameMode === 'level' && levelDist < W) {
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(levelDist, 0, 15, GROUND_Y);
+            // 简单的发光
+            ctx.shadowBlur = 20; ctx.shadowColor = '#f00';
+            ctx.fillRect(levelDist+5, 0, 5, GROUND_Y);
+            ctx.shadowBlur = 0;
+        }
+
+        // 2. 批量绘制平台 (青色)
+        ctx.fillStyle = "#00ffff";
+        // iPad优化：对于没有发光的简单矩形，合并路径一次填充并不一定比逐个填充快，直接填充即可
+        for(let p of platforms) ctx.fillRect(p.x, p.y, p.w, p.h);
+
+        // 3. 批量绘制障碍 (不同颜色)
+        // 为了aesthetic保留发光，但限制在屏幕内物体
+        ctx.shadowBlur = 10;
+        for(let h of hazards) {
+            if(h.x > W || h.x < -h.w) continue;
+            ctx.shadowColor = h.col;
+            ctx.fillStyle = h.col;
+            ctx.fillRect(h.x, h.y, h.w, h.h);
+        }
+        ctx.shadowBlur = 0; // 关闭障碍物发光
+
+        // 4. 绘制玩家 (拖尾+主体)
+        // 拖尾不使用Glow以节省性能
+        player.ghosts.forEach((g, i) => {
+            drawDuck(g.x, g.y, g.angle, g.squash, 0.1 + i * 0.04, g.crouch, false);
         });
-    }
-}
+        // 主体使用霓虹Glow
+        drawDuck(player.x, player.y, player.angle, player.squash, 1, player.crouch, true);
 
-// ================= 主更新 =================
-function update(){
-    if(page!=="game" || state!=="play") return;
-
-    updatePlayer();
-
-    hazards.forEach(h=>h.x-=speed);
-    platforms.forEach(p=>p.x-=speed);
-
-    speed+=0.002;
-    distance+=speed;
-
-    // 碰撞
-    let ph = player.crouch?20:45;
-    let py = player.y+(player.crouch?30:5);
-
-    hazards.forEach(h=>{
-        if(hit({x:player.x+10,y:py,w:25,h:ph},h)){
-            if(!(h.type==="laser" && player.crouch)){
-                state="dead";
-            }
-        }
-    });
-
-    // 无限生成
-    if(hazards.length && hazards[hazards.length-1].x < 1000){
-        let x = hazards[hazards.length-1].x + rand(300,600);
-        let r=Math.random();
-
-        if(r<0.6){
-            hazards.push({x,y:GROUND-45,w:42,h:45,type:"mine"});
-        }else{
-            hazards.push({x,y:GROUND-120,w:240,h:35,type:"laser"});
-        }
-
-        if(Math.random()>0.5){
-            platforms.push({x:x-120,y:GROUND-180,w:220,h:20});
+        // 5. 结算界面 (界面美感保留)
+        if (gameActive && gameState !== "play") {
+            ctx.fillStyle = "rgba(0,0,0,0.8)";
+            ctx.fillRect(0, 0, W, H);
+            ctx.fillStyle = "white";
+            ctx.font = "80px Impact";
+            ctx.textAlign = "center";
+            ctx.filter = gameState === "win" ? "drop-shadow(0 0 15px #0f0)" : "drop-shadow(0 0 15px #f00)";
+            ctx.fillText(gameState === "win" ? "SUCCESS" : "FAILED", W/2, H/2);
+            ctx.filter = "none"; ctx.textAlign = "left"; // 重置 ctx 状态
         }
     }
-}
 
-// ================= 绘制鸭子 =================
-function drawDuck(x,y,angle,squash,alpha,crouch){
-    let h = 50*squash;
-    let w = 45*(crouch?1.8:2.0-squash);
-
-    ctx.save();
-    ctx.translate(x+25,y+25);
-    ctx.rotate(angle*Math.PI/180);
-    ctx.globalAlpha=alpha;
-
-    ctx.beginPath();
-    ctx.ellipse(0,0,w/2,h/2,0,0,Math.PI*2);
-    ctx.fillStyle="#ffd432";
-    ctx.fill();
-
-    ctx.fillStyle="#00ffff";
-    ctx.fillRect(w/4,-h/6,16,crouch?4:8);
-
-    ctx.restore();
-}
-
-// ================= 玩家绘制 =================
-function drawPlayer(){
-    player.ghosts.forEach((g,i)=>{
-        drawDuck(g.x,g.y,g.angle,g.squash,0.2+i*0.1,g.crouch);
-    });
-
-    drawDuck(player.x,player.y,player.angle,player.squash,1,player.crouch);
-}
-
-// ================= UI =================
-function button(txt,x,y,cb){
-    let hover = mouse.x>x && mouse.x<x+200 && mouse.y>y && mouse.y<y+70;
-
-    ctx.fillStyle = hover ? "#5050aa" : "#303070";
-    ctx.fillRect(x,y,200,70);
-
-    ctx.fillStyle="white";
-    ctx.font="28px Impact";
-    ctx.fillText(txt,x+30,y+45);
-
-    if(hover && mouse.click) cb();
-}
-
-// ================= 绘制 =================
-function draw(){
-    ctx.fillStyle="#0a0a19";
-    ctx.fillRect(0,0,1000,600);
-
-    if(page==="menu"){
-        ctx.fillStyle="#ffd432";
-        ctx.font="90px Impact";
-        ctx.fillText("CYBER DUCK",180,200);
-
-        button("START",400,300,startGame);
-        return;
+    // --- 工具：获取CSS变量颜色 ---
+    function varColor(name) {
+        return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
     }
 
-    // 地面
-    ctx.fillStyle="#141432";
-    ctx.fillRect(0,GROUND,1000,100);
-
-    // 平台
-    ctx.fillStyle="#00ffff";
-    platforms.forEach(p=>ctx.fillRect(p.x,p.y,p.w,p.h));
-
-    // 障碍
-    hazards.forEach(h=>{
-        ctx.fillStyle = h.type==="laser" ? "#ff3296" : "#ffd432";
-        ctx.fillRect(h.x,h.y,h.w,h.h);
-    });
-
-    drawPlayer();
-
-    ctx.fillStyle="white";
-    ctx.font="30px Arial";
-    ctx.fillText("DIST "+Math.floor(distance),20,40);
-
-    if(state==="dead"){
-        ctx.fillStyle="rgba(0,0,0,0.7)";
-        ctx.fillRect(0,0,1000,600);
-        ctx.fillStyle="white";
-        ctx.font="80px Impact";
-        ctx.fillText("WASTED",320,300);
+    // --- 游戏循环 ---
+    function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
     }
-}
+    
+    // 初始化UI和启动
+    syncData();
+    loop();
 
-// ================= 鼠标 =================
-let mouse={x:0,y:0,click:false};
-c.addEventListener("mousemove",e=>{
-    mouse.x=e.offsetX; mouse.y=e.offsetY;
-});
-c.addEventListener("mousedown",()=>mouse.click=true);
-c.addEventListener("mouseup",()=>mouse.click=false);
-
-// ================= 循环 =================
-function loop(){
-    update();
-    draw();
-    mouse.click=false;
-    requestAnimationFrame(loop);
-}
-loop();
 </script>
 </body>
 </html>
